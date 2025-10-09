@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parallax Game Background</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        body {
+            font-family: 'Press Start 2P', cursive;
+            margin: 0;
+            overflow: hidden;
+            background-color: #0d0f22;
+        }
+
+        .parallax-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .parallax-layer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 200%; /* Make layers wider to allow for movement */
+            height: 100%;
+            background-size: contain;
+            background-repeat: repeat-x;
+            transform: translate3d(0, 0, 0); /* Use 3D transform for performance */
+            will-change: transform; /* Hint to the browser for animation optimization */
+        }
+        
+        #sky {
+            z-index: 1;
+        }
+
+        #bg-layer-2 {
+            z-index: 2;
+        }
+
+        #bg-layer-3 {
+            z-index: 3;
+        }
+
+        #bg-layer-4 {
+            z-index: 4;
+        }
+
+        #moon-layer {
+            z-index: 1;
+        }
+
+        /* Define a subtle glow effect for the city layers */
+        .glowing-layer {
+            filter: drop-shadow(0 0 10px rgba(255, 0, 127, 0.7));
+        }
+
+        #moon-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="parallax-container">
+        <!-- Canvas for the sky and stars -->
+        <canvas id="skyCanvas" class="absolute inset-0"></canvas>
+        <!-- The moon is now a separate element for easier positioning -->
+        <div id="moon-layer" class="absolute flex justify-center top-10 w-full">
+            <canvas id="moonCanvas" width="300" height="300"></canvas>
+        </div>
+
+        <!-- The city layers. Note: These image files must be in the same directory. -->
+        <div id="bg-layer-2" class="parallax-layer">
+            <img src="bg_layer2.png" alt="City Background Layer 2" class="w-full h-full object-cover glowing-layer">
+        </div>
+        <div id="bg-layer-3" class="parallax-layer">
+            <img src="bg_layer3.png" alt="City Background Layer 3" class="w-full h-full object-cover glowing-layer">
+        </div>
+        <div id="bg-layer-4" class="parallax-layer">
+            <img src="bg_layer4.png" alt="City Background Layer 4" class="w-full h-full object-cover glowing-layer">
+        </div>
+    </div>
+
+    <script>
+        // Get the canvas elements for sky and moon
+        const skyCanvas = document.getElementById('skyCanvas');
+        const moonCanvas = document.getElementById('moonCanvas');
+        const skyCtx = skyCanvas.getContext('2d');
+        const moonCtx = moonCanvas.getContext('2d');
+
+        // Get the parallax layers
+        const layer2 = document.getElementById('bg-layer-2');
+        const layer3 = document.getElementById('bg-layer-3');
+        const layer4 = document.getElementById('bg-layer-4');
+
+        // Set initial canvas size
+        let width = skyCanvas.width = window.innerWidth;
+        let height = skyCanvas.height = window.innerHeight;
+
+        // Handle window resizing
+        window.addEventListener('resize', () => {
+            width = skyCanvas.width = window.innerWidth;
+            height = skyCanvas.height = window.innerHeight;
+            
+            // Re-draw the background and reset star positions
+            drawBackground();
+            stars.forEach(star => {
+                star.x = Math.random() * width;
+                star.y = Math.random() * height;
+            });
+        });
+
+        // --- BACKGROUND GRADIENT (SKY) ---
+        function drawBackground() {
+            const gradient = skyCtx.createLinearGradient(0, 0, 0, height);
+            gradient.addColorStop(0, '#0f0c29'); // Dark blue
+            gradient.addColorStop(0.5, '#4b0082'); // Deep purple
+            gradient.addColorStop(1, '#ff69b4'); // Hot pink
+            skyCtx.fillStyle = gradient;
+            skyCtx.fillRect(0, 0, width, height);
+        }
+
+        // --- GLOWING SYNTHWAVE MOON ---
+        function drawMoon() {
+            moonCtx.clearRect(0, 0, moonCanvas.width, moonCanvas.height);
+            const moonRadius = moonCanvas.width / 2.5;
+            moonCtx.save();
+            moonCtx.beginPath();
+            moonCtx.arc(moonCanvas.width / 2, moonCanvas.height / 2, moonRadius, 0, Math.PI * 2);
+            moonCtx.fillStyle = '#FF007F'; // Neon Pink
+            moonCtx.shadowColor = '#FF00FF'; // Neon Magenta Glow
+            moonCtx.shadowBlur = 40;
+            moonCtx.fill();
+            moonCtx.restore();
+        }
+
+        // --- ANIMATED STARS ---
+        const stars = [];
+        const numStars = 400;
+
+        function Star() {
+            this.x = Math.random() * width;
+            this.y = Math.random() * height;
+            this.size = Math.random() * 2 + 0.5;
+            this.speed = Math.random() * 0.05 + 0.01;
+        }
+
+        for (let i = 0; i < numStars; i++) {
+            stars.push(new Star());
+        }
+
+        function drawStars() {
+            skyCtx.fillStyle = '#FFFFFF';
+            stars.forEach(star => {
+                skyCtx.beginPath();
+                skyCtx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                skyCtx.fill();
+                star.y += star.speed;
+                if (star.y > height) {
+                    star.y = 0;
+                    star.x = Math.random() * width;
+                }
+            });
+        }
+        
+        // --- PARALLAX ANIMATION ---
+        const speed = 0.5; // Base speed for the layers
+        let scrollPosition = 0;
+        
+        function animateParallax() {
+            scrollPosition -= speed;
+            
+            // Adjust the speed multiplier for each layer to create the parallax effect
+            layer2.style.transform = `translateX(${scrollPosition * 0.25}px)`;
+            layer3.style.transform = `translateX(${scrollPosition * 0.5}px)`;
+            layer4.style.transform = `translateX(${scrollPosition * 1}px)`;
+            
+            requestAnimationFrame(animateParallax);
+        }
+
+        // --- MAIN ANIMATION LOOP ---
+        function animate() {
+            skyCtx.clearRect(0, 0, width, height); // Clear sky canvas
+            drawBackground();
+            drawStars();
+            
+            requestAnimationFrame(animate);
+        }
+        
+        // Start the animations
+        window.onload = function() {
+            drawMoon(); // Draw the moon once
+            animate();
+            animateParallax();
+        };
+
+    </script>
+</body>
+</html>
