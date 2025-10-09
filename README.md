@@ -1,3 +1,9 @@
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
+---
+
 # SDL3 Python Game Port
 
 This repository contains a **Python** port of a game originally developed in **C/C++** using **SDL3**.
@@ -24,8 +30,13 @@ The original project can be found here: [constref/sdl3-gamedev](https://github.c
 
 ## How to Run
 
-1. Install required dependencies and they are sdl3 sdl2.sdlmixer sdl3.SDL_image ctypes glm numpy
+1. Install required dependencies: `sdl3`, `sdl2.sdlmixer`, `sdl3.SDL_image`, `ctypes`, `glm`, `numpy`.
 2. Run the main Python script:
-3. If game doesn't run plz check the path where you installed all the dependencies and add the path 
-```bash
-python3 game.py
+    ```bash
+    python3 game.py
+    ```
+3. If the game doesn't run, please check the paths where you installed the dependencies and add those paths to your environment variables accordingly.
+
+---
+
+                                                  --- --- --- ---
