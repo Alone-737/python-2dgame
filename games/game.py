@@ -18,12 +18,11 @@ from gameobject import (
 )
 import tracemalloc
 
-# --- Load SDL3 core and image libraries ---
+#Load SDL3 core and image libraries 
 try:
-    # Ensure SDL3 core is loaded
-    ctypes.CDLL("libSDL3.so", mode=ctypes.RTLD_GLOBAL)
-    ctypes.CDLL("libSDL3_image.so", mode=ctypes.RTLD_GLOBAL)
-    ctypes.CDLL("libSDL2_mixer.so", mode=ctypes.RTLD_GLOBAL)
+    ctypes.CDLL("libSDL3.dll", mode=ctypes.RTLD_GLOBAL)
+    ctypes.CDLL("libSDL3_image.dll", mode=ctypes.RTLD_GLOBAL)
+    ctypes.CDLL("libSDL2_mixer.dll", mode=ctypes.RTLD_GLOBAL)
 except OSError as e:
     print("Error: SDL library not found.")
     print(e)
@@ -53,7 +52,6 @@ class Gamestate:
         self.debugMode = False
         self.deadEnemy = []
         self.playerDead = False
-        #for infity level generation
         self.generated_chunks = 0
         self.last_chunk_end = 0
         self.chunk_width = 20 * Resources.TILE_SIZE
@@ -91,7 +89,6 @@ class Resources:
     chunkEnemyDie = None
     chunkBackground = None
 
-    # Keep all loaded textures so we can unload them later
     textures = []
     texIdle = None
     texRun = None
@@ -116,7 +113,7 @@ class Resources:
     @staticmethod
     def load_sound(filepath: str):
         """Loads a sound effect from file."""
-        # Mix_LoadWAV is an SDL2_mixer function
+
         chunk = mixer.Mix_LoadWAV(filepath.encode("utf-8"))
         if not chunk:
             print(f"Failed to load sound: {filepath} – {sdl3.SDL_GetError().decode()}")
@@ -151,7 +148,7 @@ class Resources:
                 "SDL_mixer could not initialize! Error:", mixer.Mix_GetError().decode()
             )
             return False
-        # Mix_OpenAudio is an SDL2_mixer function, using the SDL2 signature
+
         if mixer.Mix_OpenAudio(44100, mixer.MIX_DEFAULT_FORMAT, 2, 2048) < 0:
             print("SDL_mixer OpenAudio failed! Error:", mixer.Mix_GetError().decode())
             return False
@@ -221,7 +218,7 @@ class Resources:
             sdl3.SDL_DestroyTexture(tex)
         Resources.textures.clear()
 
-        # Unload sounds properly
+        # Unload sounds
         if Resources.chunkShoot:
             mixer.Mix_FreeChunk(Resources.chunkShoot)
         if Resources.chunkShootHit:
@@ -282,14 +279,14 @@ def initialize(state):
         print("Error creating SDL3 window")
         return False
 
-    # create renderer
+    # creating renderer
     state.renderer = sdl3.SDL_CreateRenderer(state.window, None)
     if not state.renderer:
         print("Error creating SDL3 renderer")
         return False
     sdl3.SDL_SetRenderVSync(state.renderer, 1)
 
-    # Set logical resolution (for scaling)
+    # Seting logical resolution
     sdl3.SDL_SetRenderLogicalPresentation(
         state.renderer,
         state.logicalw,
@@ -323,7 +320,7 @@ def window_creation():
         print("SDL_Init failed:", sdl3.SDL_GetError().decode())
         return False
 
-    # Load resources (textures, animations, etc.)
+    # Loading resources 
     if not Resources.load(state):
         print("Failed to load resources. Exiting.")
         return False
@@ -362,7 +359,7 @@ def window_creation():
 
     Resources.chunkBackground = debug_load_music("audio/bgmusic/converted_theme2.mp3", fallback="audio/bgmusic/fallback.mp3")
 
-    # Generate initial chunks player must be in first chunk
+    # Generate initial chunks
     generateLevelChunk(gs, state, Resources, 0, spawn_player=True)
 
     assert gs.player is not None, "Player failed to spawn in initial chunk!"
@@ -373,7 +370,7 @@ def window_creation():
     previousTime = sdl3.SDL_GetTicks()
     running = True
     event = sdl3.SDL_Event()
-    # Draw player health bar at top of screen
+    # player health bar at top of screen
     if gs.player:
         drawPlayerHealthBar(state, gs)
 
@@ -386,7 +383,7 @@ def window_creation():
         nowTime = sdl3.SDL_GetTicks()
         deltaTime = (nowTime - previousTime) / 1000.0
 
-        # --- Handle Events ---
+        # Handle Events
         while sdl3.SDL_PollEvent(event):
             if event.type == sdl3.SDL_EVENT_QUIT:
                 running = False
@@ -412,16 +409,16 @@ def window_creation():
                 if gs.player:
                     handleKeyInputs(state, gs, gs.player, scancode, key_down)
 
-        # --- Generate new level chunks as player moves forward ---
+        # Generate new level chunks as player moves forward
         if gs.player and gs.player.position.x > gs.last_chunk_end - (state.logicalw * 1.5):
             generateLevelChunk(gs, state, Resources, gs.last_chunk_end)
 
-        # --- Update game objects ---
+        #Update game objects
         for layer in gs.layers:
             for obj in layer:
                 update(state, gs, Resources, obj, deltaTime)
 
-        for bullet in gs.bullets[:]:  # Safe iteration
+        for bullet in gs.bullets[:]:  
             update(state, gs, Resources, bullet, deltaTime)
             if bullet.currentAnimation != -1:
                 bullet.animations[bullet.currentAnimation].step(deltaTime)
@@ -429,17 +426,17 @@ def window_creation():
             if bullet.position.x < -1000 or bullet.position.x > 10000:
                 gs.bullets.remove(bullet)
 
-        # --- Viewport scrolling ---
+        # Viewport scrolling
         if gs.player:
             gs.mapViewport.x = (
                 gs.player.position.x + Resources.TILE_SIZE / 2
             ) - gs.mapViewport.w / 2
 
-        # --- Clean up far-off objects ---
+        # Clean up far-off objects 
         if gs.player:
             cleanupDistantObjects(gs, gs.player.position.x - state.logicalw * 2)
 
-        # --- Draw Pass ---
+        # Draw Pass
         sdl3.SDL_SetRenderDrawColor(state.renderer, 20, 10, 20, 255)
         sdl3.SDL_RenderClear(state.renderer)
 
@@ -480,7 +477,7 @@ def window_creation():
             )
             sdl3.SDL_RenderTexture(state.renderer, obj.texture, None, dst)
 
-        # --- Debug Info ---
+        # Debug Info
         if gs.debugMode and gs.player:
             sdl3.SDL_SetRenderDrawColor(state.renderer, 255, 255, 255, 255)
 
@@ -499,20 +496,20 @@ def window_creation():
             text = f"S:{state_str}, B:{len(gs.bullets)}, G:{getattr(gs.player, 'grounded', False)}"
             sdl3.SDL_RenderDebugTextFormat(state.renderer, 5, 5, text.encode("utf-8"))
 
-        # --- Remove dead enemies ---
+        #Removing dead enemies
         for layer in gs.layers:
             layer[:] = [obj for obj in layer if not (obj.type.enemy and obj.data.enemy.hitPoints <= 0)]
 
-        # --- Present ---
+     
         sdl3.SDL_RenderPresent(state.renderer)
         previousTime = nowTime
 
-    # --- Cleanup ---
+    #Cleanup
     Resources.unload()
     cleanup(state)
     return True
 
-# --- Draw Object Function ---
+# Draw Object Function
 def drawObject(
     state: SDLstate,
     gs: Gamestate,
@@ -521,7 +518,7 @@ def drawObject(
     height: float,
     deltaTime: float,
 ):
-    # calculate source rectangle based on animation
+    # calculating source rectangle based on animation
     srcX = (
         obj.animations[obj.currentAnimation].currentFrame() * width
         if obj.currentAnimation != -1
@@ -530,14 +527,14 @@ def drawObject(
     scr = SDL_FRect(srcX, 0, width, height)
     dst = SDL_FRect(obj.position.x - gs.mapViewport.x, obj.position.y, width, height)
 
-    # determine flip mode
+    # determining flip mode
     flipmode = sdl3.SDL_FLIP_HORIZONTAL if obj.direction == -1 else sdl3.SDL_FLIP_NONE
     if not obj.shouldFlash:
         sdl3.SDL_RenderTextureRotated(
             state.renderer, obj.texture, scr, dst, 0, None, flipmode
         )
     else:
-        # flash obj with bules tint
+        # flashing obj with bules tint
         sdl3.SDL_SetTextureColorModFloat(obj.texture, 1.0, 1.0, 2.55)
         sdl3.SDL_RenderTextureRotated(
             state.renderer, obj.texture, scr, dst, 0, None, flipmode
@@ -546,7 +543,7 @@ def drawObject(
         if obj.flashTimer.step(deltaTime):
             obj.shouldFlash = False
 
-    # Draw health bar for enemies and player
+    #  health bar for enemies and player
     if obj.type.enemy or obj.type.player:
         drawHealthBar(state, gs, obj, obj.type.player)
 
@@ -565,13 +562,13 @@ def drawObject(
 def update(
     state: SDLstate, gs: Gamestate, res: Resources, obj: GameObject, deltaTime: float
 ):
-    # Handle player damage cooldown if this is the player object
+    # Handling player damage cooldown
     if obj.type.player and obj.data.player.damage_cooldown > 0:
         obj.data.player.damage_cooldown -= 1
     
-    # Check if player is dead
+    # Checking if player is dead
     if obj.type.player and obj.data.player.hp <= 0:
-        # Set player state to dead and stop movement
+        # Seting player state to dead and stop movement
         obj.data.player.state = "dead"
         obj.velocity = glm.vec2(0, 0)
         gs.playerDead = True
@@ -583,7 +580,7 @@ def update(
             obj.texture = tex_shoot
             obj.currentAnimation = anim_shoot
 
-            # Count active bullets
+            # Counting active bullets
             active_bullets = sum(not b.data.bullet.inactive for b in gs.bullets)
             if active_bullets < 6:
                 obj.data.player.weaponTimer.reset()
@@ -619,7 +616,7 @@ def update(
                 bullet.data.bullet.inactive = False
                 bullet.data.bullet.moving = True
 
-                # Reuse or append bullet
+                # append bullet
                 foundInactive = False
                 for i in range(len(gs.bullets)):
                     if gs.bullets[i].data.bullet.inactive:
@@ -635,19 +632,19 @@ def update(
             obj.currentAnimation = anim_normal
 
 
-    # Update all animations
+    # Updating all animations
     if obj.currentAnimation != -1:
         obj.animations[obj.currentAnimation].step(deltaTime)
 
-    # Apply gravity to dynamic objects that aren't grounded
+    # Applying gravity to dynamic objects that aren't grounded
     if obj.dynamic and not obj.grounded:
         obj.velocity += glm.vec2(0, 500) * deltaTime
 
     currentDirection: float = 0.0
 
-    # Handle player-specific logic
+    # Handling player-specific logic
     if obj.type.player:
-        # Update weapon timer for player
+        # Updating weapon timer for player
         obj.data.player.weaponTimer.step(deltaTime)
 
         # Handle input: left/right movement
@@ -661,7 +658,7 @@ def update(
         # Get current player state
         player_state = obj.data.player
 
-        # Handle state transitions based on grounded status
+        # Handling state transitions based on grounded status
         if obj.grounded:
             if player_state.jumping:
                 # Landed from jump
@@ -674,7 +671,7 @@ def update(
                     obj.texture = res.texIdle
                     obj.currentAnimation = res.ANIM_PLAYER_IDLE
 
-        # Handle state-specific behavior
+        # Handling state-specific behavior
         if player_state.idle:
             if currentDirection != 0:
                 player_state.state = "running"
@@ -691,7 +688,7 @@ def update(
                     else:
                         obj.velocity.x += amount
 
-            # Handle shooting while idle
+            # Handling shooting while idle
             handleshooting(
                 res.texIdle, res.texShoot, res.ANIM_PLAYER_IDLE, res.ANIM_PLAYER_SHOOT
             )
@@ -706,7 +703,7 @@ def update(
                     currentDirection * obj.acceleration.x * deltaTime, 0
                 )
 
-            # Handle sliding when turning
+            # Handling sliding when turning
             if obj.velocity.x * obj.direction < 0 and obj.grounded:
                 handleshooting(
                     res.texslide,
@@ -729,7 +726,7 @@ def update(
             if currentDirection != 0:
                 obj.velocity.x += currentDirection * obj.acceleration.x * deltaTime
 
-    # Handle enemy-specific logic
+    # Handling enemy-specific logic
     elif obj.type.enemy:
         # Only process enemy AI if player exists
         if gs.player is not None:
@@ -738,7 +735,7 @@ def update(
                 distance = glm.length(playerDir)
 
                 if distance < 200 and distance > 50:
-                    # Check if ground exists ahead
+                    # Checking if ground exists ahead
                     sensor_x_offset = (obj.collider.w / 2) * obj.direction
                     sensor = sdl3.SDL_FRect(
                         x=obj.position.x + obj.collider.x + sensor_x_offset,
@@ -803,13 +800,13 @@ def update(
                 obj.animations[obj.currentAnimation].timeout):
                 obj.data.bullet.inactive = True
 
-    # Apply velocity limits
+    # Applying velocity limits
     if hasattr(obj, 'maxSpeedX') and abs(obj.velocity.x) > obj.maxSpeedX:
         obj.velocity.x = np.sign(obj.velocity.x) * obj.maxSpeedX
 
     obj.position += obj.velocity * deltaTime
 
-    # Check for collisions with solid objects
+    # Checking for collisions with solid objects
     if obj.dynamic or obj.type.bullet:
         for layer in gs.layers:
             for other_obj in layer:
@@ -820,7 +817,7 @@ def update(
                     hasattr(other_obj.data.enemy, 'hitPoints') and 
                     other_obj.data.enemy.hitPoints <= 0):
                     continue
-                # Check against level objects OR enemies
+                # Checking against level objects OR enemies
                 if other_obj.type.level or other_obj.type.enemy:
                     checkcollision(state, gs, res, obj, other_obj, deltaTime)
                     if obj.type.bullet and obj.data.bullet.colliding:
@@ -829,7 +826,7 @@ def update(
                 obj.velocity = glm.vec2(0, 0)
                 obj.data.bullet.moving = False
     
-    # Only check player-enemy collisions if player exists
+
     if obj.type.player and gs.player is not None:
         player_rect = sdl3.SDL_FRect(
             x=obj.position.x + obj.collider.x,
@@ -862,9 +859,9 @@ def update(
                             obj.data.player.state = "dead"
                             obj.velocity = glm.vec2(0, 0)
                             print("Player has died!")
-                            # Optional: trigger a game-over menu or flag instead of quitting
 
-    # Handle grounded detection
+
+    # Handling grounded detection
     FoundGround = False
     ground_obj = None
 
@@ -905,7 +902,7 @@ def update(
         if FoundGround:
             break
 
-    # Update grounded state
+    # Updating grounded state
     if obj.grounded != FoundGround:
         obj.grounded = FoundGround
         if FoundGround and obj.type.player:
@@ -917,7 +914,7 @@ def update(
                 if player_bottom <= ground_top + 1.0:
                     obj.position.y = ground_top - obj.collider.y - obj.collider.h
     
-    # Handle enemy grounded state
+    # Handling enemy grounded state
     if obj.type.enemy:
         if FoundGround:
             obj.grounded = True
@@ -962,7 +959,7 @@ def collisionResponse(
                 objA.position.y += rectC.h
                 objA.velocity.y = 0
 
-    # Object we are checking
+    # Object checking
     if objA.type.player:
         if objB.type.level:  # Both ground and panels are level objects
             generic_response()
@@ -983,7 +980,7 @@ def collisionResponse(
                 objA.data.bullet.colliding = True
                 objA.currentAnimation = res.ANIM_BULLET_HIT
                 objA.texture = res.texBulletHit
-                # Change enemy state, apply damage, and flash
+              
                 objB.data.enemy.state = "damage"
                 objB.data.enemy.hitPoints -= 1
                 objB.direction = -objA.direction
@@ -1031,9 +1028,9 @@ def checkcollision(
     )
     rectC = SDL_FRect(0)
     if sdl3.SDL_GetRectIntersectionFloat(rectA, rectB, rectC):
-        # found intersection,respond
+     
         collisionResponse(state, gs, res, rectA, rectB, rectC, a, b, deltaTime)
-        # Bullet collision with level objects
+
         if a.type.bullet and b.type.level and a.data.bullet.moving:
             a.data.bullet.moving = False
             a.data.bullet.inactive = True
@@ -1048,11 +1045,11 @@ def generateLevelChunk(gs: Gamestate, state: SDLstate, res: Resources, start_x: 
     foreground = np.zeros((rows, cols), dtype=int)
     background = np.zeros((rows, cols), dtype=int)
     
-    # Always have ground at the bottom
+    # Always having ground at the bottom
     tile_map[4, :] = 1
     if spawn_player:
         tile_map[3, 1] = 4
-    # Generate platforms
+    # Generating platforms
     platform_types = [
         (1, 4, 6),   # (row, min_length, max_length)
         (2, 3, 5),
@@ -1061,39 +1058,39 @@ def generateLevelChunk(gs: Gamestate, state: SDLstate, res: Resources, start_x: 
     
     x_pos = 0
     while x_pos < cols:
-        # Randomly decide if we place a platform
+        # Randomly deciding if we place a platform
         if random.random() < 0.7 and x_pos < cols - 3:  # 70% chance to place platform
             platform_type = random.choice(platform_types)
             row, min_len, max_len = platform_type
             length = random.randint(min_len, max_len)
             
-            # Make sure platform fits
+            # Making sure platform fits
             if x_pos + length >= cols:
                 length = cols - x_pos - 1
                 
-            # Place the platform
+
             tile_map[row, x_pos:x_pos+length] = 2
             
-            # Maybe add an enemy on the platform
-            if random.random() < 0.4 and length > 2:  # 40% chance
+
+            if random.random() < 0.4 and length > 2:  # 40% chance for enemy
                 enemy_pos = x_pos + random.randint(1, length-1)
                 tile_map[row-1, enemy_pos] = 3  # Enemy on platform
             
-            x_pos += length + random.randint(1, 3)  # Skip some space
+            x_pos += length + random.randint(1, 3)  # Skiping some space
         else:
             x_pos += 1
             
-    # Add decorative elements
+    # Adding decorative elements
     for x in range(cols):
         # Add some grass on ground
         if random.random() < 0.2 and tile_map[3, x] == 0:  # 20% chance
             foreground[3, x] = 5
             
-        # Add some background bricks
+        # Adding some background bricks
         if random.random() < 0.1 and x % 2 == 0:  # 10% chance
             background[random.randint(0, 2), x] = 6
     
-    # Convert tile positions to actual game objects
+    # Converting tile positions to actual game objects
     def createObject(r, c, tex, obj_type, x_offset=0):
         o = GameObject()
         o.type = obj_type
@@ -1105,7 +1102,7 @@ def generateLevelChunk(gs: Gamestate, state: SDLstate, res: Resources, start_x: 
         o.collider = SDL_FRect(x=0, y=0, w=Resources.TILE_SIZE, h=Resources.TILE_SIZE)
         return o
 
-    # Create objects from the generated chunk
+    # Creating objects from the generated chunk
     for r in range(rows):
         for c in range(cols):
             tile = tile_map[r][c]
@@ -1164,7 +1161,7 @@ def generateLevelChunk(gs: Gamestate, state: SDLstate, res: Resources, start_x: 
                 o = createObject(r, c, Resources.texBrick, ObjectType(level=False))
                 gs.backgroundTiles.append(o)
     
-    # Update the last chunk position
+    # Updating the last chunk position
     gs.last_chunk_end = start_x + cols * Resources.TILE_SIZE
     gs.generated_chunks += 1
    
@@ -1181,7 +1178,7 @@ def handleKeyInputs(
                 # Start jumping
                 player_state.state = "jumping"
                 obj.velocity.y = JUMP_FORCE
-                # Use running texture for jump animation
+
                 obj.texture = Resources.texRun
                 obj.currentAnimation = Resources.ANIM_PLAYER_RUN
 
@@ -1217,16 +1214,16 @@ def drawParalaxBackground(
 
     # update scroll
     scrollposition -= xVelocity * scrollFactor * deltaTime
-    # wrap-around behavior: keep in range [-texture_w, 0]
+
     if scrollposition <= -texture_w:
         scrollposition += texture_w
     if scrollposition >= texture_w:
         scrollposition -= texture_w
 
-    # draw first copy
+    # drawing first copy
     dst = SDL_FRect(x=scrollposition, y=30, w=float(texture_w), h=float(texture_h))
     sdl3.SDL_RenderTexture(renderer, texture, None, dst)
-    # draw second copy (tile horizontally)
+    # drawing second copy (tile horizontally)
     dst2 = SDL_FRect(
         x=scrollposition + float(texture_w),
         y=30,
@@ -1235,11 +1232,11 @@ def drawParalaxBackground(
     )
     sdl3.SDL_RenderTexture(renderer, texture, None, dst2)
 
-    # return updated scroll so caller can store it
+    # returning updated scroll so caller can store it
     return scrollposition
 def cleanupDistantObjects(gs: Gamestate, min_x: float):
     """Remove objects that are far behind the player to save memory"""
-    # Clean up level objects
+    # Cleaning up level objects
     for layer in gs.layers:
         i = 0
         while i < len(layer):
@@ -1249,7 +1246,7 @@ def cleanupDistantObjects(gs: Gamestate, min_x: float):
             else:
                 i += 1
                 
-    # Clean up background tiles
+    # Cleaning up background tiles
     i = 0
     while i < len(gs.backgroundTiles):
         obj = gs.backgroundTiles[i]
@@ -1258,7 +1255,7 @@ def cleanupDistantObjects(gs: Gamestate, min_x: float):
         else:
             i += 1
             
-    # Clean up foreground tiles
+    # Cleaning up foreground tiles
     i = 0
     while i < len(gs.foregroundTiles):
         obj = gs.foregroundTiles[i]
@@ -1272,7 +1269,7 @@ def drawHealthBar(state: SDLstate, gs: Gamestate, obj: GameObject, is_player: bo
     if not obj or not hasattr(obj, 'data'):
         return
     
-    # Get health information based on object type
+
     if is_player and hasattr(obj.data, 'player'):
         current_hp = obj.data.player.hp
         max_hp = 100  # Player max HP
@@ -1282,16 +1279,16 @@ def drawHealthBar(state: SDLstate, gs: Gamestate, obj: GameObject, is_player: bo
     else:
         return
     
-    # Don't draw full health bars or for dead entities
+
     if current_hp >= max_hp or current_hp <= 0:
         return
     
-    # Calculate health bar dimensions
+    # Calculating health bar dimensions
     bar_width = obj.collider.w
     bar_height = 4
     health_percentage = current_hp / max_hp
     
-    # Calculate position (above the object)
+    # Calculating position (above the object)
     bar_x = obj.position.x + obj.collider.x - gs.mapViewport.x
     bar_y = obj.position.y + obj.collider.y - 8  # 8 pixels above the object
     
@@ -1300,7 +1297,7 @@ def drawHealthBar(state: SDLstate, gs: Gamestate, obj: GameObject, is_player: bo
     sdl3.SDL_SetRenderDrawColor(state.renderer, 255, 0, 0, 255)
     sdl3.SDL_RenderFillRect(state.renderer, bg_rect)
     
-    # Determine health bar color based on percentage
+    # Determining health bar color based on percentage
     if health_percentage > 0.6:
         color = (0, 255, 0)  # Green for high health
     elif health_percentage > 0.3:
@@ -1308,13 +1305,13 @@ def drawHealthBar(state: SDLstate, gs: Gamestate, obj: GameObject, is_player: bo
     else:
         color = (255, 0, 0)  # Red for low health
     
-    # Draw health
+    # Drawing health
     health_width = bar_width * health_percentage
     health_rect = SDL_FRect(x=bar_x, y=bar_y, w=health_width, h=bar_height)
     sdl3.SDL_SetRenderDrawColor(state.renderer, color[0], color[1], color[2], 255)
     sdl3.SDL_RenderFillRect(state.renderer, health_rect)
     
-    # Draw border
+    # Drawing border
     sdl3.SDL_SetRenderDrawColor(state.renderer, 0, 0, 0, 255)
     sdl3.SDL_RenderRect(state.renderer, bg_rect)
 
@@ -1333,12 +1330,12 @@ def drawPlayerHealthBar(state: SDLstate, gs: Gamestate):
     bar_y = 20
     health_percentage = current_hp / max_hp
     
-    # Draw background
+    # Drawing background
     bg_rect = SDL_FRect(x=bar_x, y=bar_y, w=bar_width, h=bar_height)
     sdl3.SDL_SetRenderDrawColor(state.renderer, 50, 50, 50, 255)
     sdl3.SDL_RenderFillRect(state.renderer, bg_rect)
     
-    # Draw health with color coding
+
     health_width = bar_width * health_percentage
     health_rect = SDL_FRect(x=bar_x, y=bar_y, w=health_width, h=bar_height)
     
@@ -1352,26 +1349,15 @@ def drawPlayerHealthBar(state: SDLstate, gs: Gamestate):
     sdl3.SDL_SetRenderDrawColor(state.renderer, color[0], color[1], color[2], 255)
     sdl3.SDL_RenderFillRect(state.renderer, health_rect)
     
-    # Draw border and text
+    # Drawing border and text
     sdl3.SDL_SetRenderDrawColor(state.renderer, 255, 255, 255, 255)
     sdl3.SDL_RenderRect(state.renderer, bg_rect)
     
-    # Draw HP text
+    # Drawing HP text
     hp_text = f"HP: {current_hp}/{max_hp}"
     sdl3.SDL_RenderDebugTextFormat(state.renderer, bar_x + 5, bar_y + 5, hp_text.encode("utf-8"))
 
-# memory leaks might be real or can be stable not growing
-
-
-# --- Run the game ---
 if __name__ == "__main__":
-    # tracemalloc.start()  # Start tracking memory
-    # snapshot1 = tracemalloc.take_snapshot()  # Take first snapshot
-
+   
     window_creation()  # Run the game
 
-    # snapshot2 = tracemalloc.take_snapshot()  # Take second snapshot after game
-
-    # top_stats = snapshot2.compare_to(snapshot1, 'lineno')
-    # for stat in top_stats[:10]:
-    #     print(stat)
