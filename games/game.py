@@ -12,26 +12,25 @@ from gameobject import (
     GameObject,
     ObjectType,
     PlayerState,
-    Timer,
     BulletState,
     EnemyState,
 )
+from Timer import Timer
 import tracemalloc
 
-#Load SDL3 core and image libraries 
+
 try:
     ctypes.CDLL("libSDL3.dll", mode=ctypes.RTLD_GLOBAL)
     ctypes.CDLL("libSDL3_image.dll", mode=ctypes.RTLD_GLOBAL)
     ctypes.CDLL("libSDL2_mixer.dll", mode=ctypes.RTLD_GLOBAL)
 except OSError as e:
-    print("Error: SDL library not found.")
-    print(e)
-    sys.exit(1)
+    
+    pass
 
 
 LAYER_IDX_LEVEL = 0
 LAYER_IDX_CHARACTERS = 1
-# Audio constants
+
 MIX_MAX_VOLUME = 128
 MIX_DEFAULT_VOLUME = 64
 
@@ -176,16 +175,16 @@ class Resources:
         Resources.texGround = Resources.load_texture(state.renderer, "tiles/ground.png")
         Resources.texPanel = Resources.load_texture(state.renderer, "tiles/panel.png")
         Resources.texBg1 = Resources.load_texture(
-            state.renderer, "Backgroung/bg_layer1.png"
+            state.renderer, "Background/bg_layer1.png"
         )
         Resources.texBg2 = Resources.load_texture(
-            state.renderer, "Backgroung/bg_layer2.png"
+            state.renderer, "Background/bg_layer2.png"
         )
         Resources.texBg3 = Resources.load_texture(
-            state.renderer, "Backgroung/bg_layer3.png"
+            state.renderer, "Background/bg_layer3.png"
         )
         Resources.texBg4 = Resources.load_texture(
-            state.renderer, "Backgroung/bg_layer4.png"
+            state.renderer, "Background/bg_layer4.png"
         )
         Resources.texBullet = Resources.load_texture(state.renderer, "bullet.png")
         Resources.texBulletHit = Resources.load_texture(
@@ -204,9 +203,16 @@ class Resources:
         Resources.chunkEnemyHit = Resources.load_sound("audio/audio_enemy_hit.wav")
         Resources.chunkEnemyDie = Resources.load_sound("audio/audio_monster_die.wav")
         Resources.chunkWallHit = Resources.load_sound("audio/audio_wall_hit.wav")
-        Resources.chunkBackground = Resources.load_music(
-            "audio/bgmusic/converted_theme2.mp3"
-        )
+        
+        # Load all background tracks
+        Resources.bg_tracks = [
+            "audio/bgmusic/converted_theme2.mp3",
+            "audio/bgmusic/converted_theme3.mp3",
+            "audio/bgmusic/converted_theme4.mp3",
+            "audio/bgmusic/converted_theme5.mp3"
+        ]
+        Resources.current_track_idx = 0
+        Resources.chunkBackground = Resources.load_music(Resources.bg_tracks[0])
 
         return True
 
@@ -312,12 +318,12 @@ def window_creation():
     state.logicalw = 640
     state.logicalh = 320
 
-    # Initialize SDL
-    if not initialize(state):
-        return False
-
+    # Initialize SDL core before window creation
     if sdl3.SDL_Init(sdl3.SDL_INIT_VIDEO | sdl3.SDL_INIT_AUDIO) < 0:
         print("SDL_Init failed:", sdl3.SDL_GetError().decode())
+        return False
+
+    if not initialize(state):
         return False
 
     # Loading resources 
@@ -327,37 +333,6 @@ def window_creation():
 
     # Setup game state
     gs = Gamestate(state)
-    print(f"Failed to load music: {Resources.chunkBackground} – {mixer.Mix_GetError().decode()}")
-
-    gs = Gamestate(state)
-    def debug_load_music(filepath, fallback=None):
-        music = Resources.load_music(filepath)
-        if music:
-            print("Music loaded successfully")
-            music_type = mixer.Mix_GetMusicType(music)
-            music_types = {
-                mixer.MUS_NONE: "NONE",
-                mixer.MUS_CMD: "CMD",
-                mixer.MUS_WAV: "WAV",
-                mixer.MUS_MOD: "MOD",
-                mixer.MUS_MID: "MID",
-                mixer.MUS_OGG: "OGG",
-                mixer.MUS_MP3: "MP3",
-                mixer.MUS_FLAC: "FLAC",
-                mixer.MUS_OPUS: "OPUS"
-            }
-            print(f"Music type: {music_types.get(music_type, 'UNKNOWN')}")
-            return music
-        else:
-            print(f"Failed to load music file: {filepath}")
-            if fallback:
-                print(f"Trying fallback: {fallback}")
-                return debug_load_music(fallback)
-            else:
-                print("No fallback music available")
-                return None
-
-    Resources.chunkBackground = debug_load_music("audio/bgmusic/converted_theme2.mp3", fallback="audio/bgmusic/fallback.mp3")
 
     # Generate initial chunks
     generateLevelChunk(gs, state, Resources, 0, spawn_player=True)
@@ -404,6 +379,18 @@ def window_creation():
                 elif not key_down and scancode == sdl3.SDL_SCANCODE_F11:
                     state.fullscreen = not state.fullscreen
                     sdl3.SDL_SetWindowFullscreen(state.window, state.fullscreen)
+                elif not key_down and scancode == sdl3.SDL_SCANCODE_M:
+                    # Cycle music
+                    mixer.Mix_HaltMusic()
+                    if Resources.chunkBackground:
+                        mixer.Mix_FreeMusic(Resources.chunkBackground)
+                    Resources.current_track_idx = (Resources.current_track_idx + 1) % len(Resources.bg_tracks)
+                    Resources.chunkBackground = Resources.load_music(Resources.bg_tracks[Resources.current_track_idx])
+                    play_music(Resources.chunkBackground, -1)
+                
+                # Restart game if dead
+                if gs.playerDead and not key_down and scancode == sdl3.SDL_SCANCODE_R:
+                    return "RESTART"
 
                 # Player controls
                 if gs.player:
@@ -501,13 +488,30 @@ def window_creation():
             layer[:] = [obj for obj in layer if not (obj.type.enemy and obj.data.enemy.hitPoints <= 0)]
 
      
+        if gs.playerDead:
+            # Draw Game Over screen
+            sdl3.SDL_SetRenderDrawBlendMode(state.renderer, sdl3.SDL_BLENDMODE_BLEND)
+            sdl3.SDL_SetRenderDrawColor(state.renderer, 0, 0, 0, 150)
+            sdl3.SDL_RenderFillRect(state.renderer, None)
+            sdl3.SDL_SetRenderDrawBlendMode(state.renderer, sdl3.SDL_BLENDMODE_NONE)
+            
+            sdl3.SDL_SetRenderDrawColor(state.renderer, 255, 0, 0, 255)
+            game_over_text = "GAME OVER"
+            # Attempt to center somewhat
+            sdl3.SDL_SetRenderScale(state.renderer, 4.0, 4.0)
+            sdl3.SDL_RenderDebugTextFormat(state.renderer, 50, 30, game_over_text.encode("utf-8"))
+            sdl3.SDL_SetRenderScale(state.renderer, 2.0, 2.0)
+            restart_text = "Press 'R' to Restart"
+            sdl3.SDL_RenderDebugTextFormat(state.renderer, 90, 80, restart_text.encode("utf-8"))
+            sdl3.SDL_SetRenderScale(state.renderer, 1.0, 1.0)
+            
         sdl3.SDL_RenderPresent(state.renderer)
         previousTime = nowTime
 
     #Cleanup
     Resources.unload()
     cleanup(state)
-    return True
+    return "QUIT"
 
 # Draw Object Function
 def drawObject(
@@ -564,15 +568,15 @@ def update(
 ):
     # Handling player damage cooldown
     if obj.type.player and obj.data.player.damage_cooldown > 0:
-        obj.data.player.damage_cooldown -= 1
+        obj.data.player.damage_cooldown -= deltaTime
     
     # Checking if player is dead
     if obj.type.player and obj.data.player.hp <= 0:
-        # Seting player state to dead and stop movement
+        # Setting player state to dead and stop movement
         obj.data.player.state = "dead"
         obj.velocity = glm.vec2(0, 0)
+        obj.maxSpeedX = 0
         gs.playerDead = True
-        sdl3.SDL_Quit()
         return 
 
     def handleshooting(tex_normal, tex_shoot, anim_normal, anim_shoot):
@@ -1358,6 +1362,8 @@ def drawPlayerHealthBar(state: SDLstate, gs: Gamestate):
     sdl3.SDL_RenderDebugTextFormat(state.renderer, bar_x + 5, bar_y + 5, hp_text.encode("utf-8"))
 
 if __name__ == "__main__":
-   
-    window_creation()  # Run the game
+    while True:
+        status = window_creation()
+        if status != "RESTART":
+            break
 

@@ -1,5 +1,6 @@
 from typing import Optional
-from TImer import Timer
+from Timer import Timer
+
 
 class Animation:
     def __init__(self, frame_count: int, length: float):
@@ -7,7 +8,7 @@ class Animation:
             raise ValueError("Frame count must be positive")
         if length <= 0:
             raise ValueError("Animation length must be positive")
-            
+
         self.frame_count: int = frame_count
         self.length: float = length
         self.time: float = 0.0
@@ -17,7 +18,7 @@ class Animation:
     def step(self, deltatime: float) -> None:
         if deltatime < 0:
             raise ValueError("Delta time cannot be negative")
-            
+
         self.time += deltatime
         if self.time >= self.length:
             self.time -= self.length
@@ -29,7 +30,7 @@ class Animation:
     def currentFrame(self) -> int:
         if self._current_frame is not None:
             return self._current_frame
-            
+
         progress = self.time / self.length
         frame_index = int(progress * self.frame_count)
         self._current_frame = frame_index % self.frame_count
@@ -42,8 +43,9 @@ class Animation:
 
     @property
     def progress(self) -> float:
-        """Returns animation progress as a value between 0 and 1"""
+        """Returns animation progress as a value between 0 and 1."""
         return self.time / self.length
-    
-    def isDone():
-        return Timer.isTimeout()
+
+    def isDone(self) -> bool:
+        """Returns True once the animation has completed one full cycle."""
+        return self.timeout

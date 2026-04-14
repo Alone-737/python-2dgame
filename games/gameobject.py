@@ -1,38 +1,42 @@
 import sdl3
 from pyglm import glm
 from Animation import Animation
-from TImer import Timer
+from Timer import Timer
+
+
 class PlayerState:
-    def __init__(self, weaponCooldown=0.1,hp=100,max_hp=100):
-        self.state = "idle"  
+    def __init__(self, weaponCooldown=0.1, hp=100, max_hp=100):
+        self.state = "idle"
         self.weaponTimer = Timer(weaponCooldown)
-        self.hp=hp
-        self.max_hp=max_hp
-        self.damage_cooldown=0
-    def TakeDamage(self,amount):
-        if self.damage_cooldown <= 0:  
-            self.hp -= amount
-            if self.hp <= 0:
-                self.hp = 0
-                self.state = "dead"  
-            self.damage_cooldown = 60 
-    # Helper properties
+        self.hp = hp
+        self.max_hp = max_hp
+        # Invincibility timer in seconds; managed by game.py, decremented by deltaTime
+        self.damage_cooldown: float = 0.0
+
+    def TakeDamage(self, amount: int) -> None:
+        """Apply damage to the player. Caller is responsible for the cooldown guard."""
+        self.hp -= amount
+        if self.hp <= 0:
+            self.hp = 0
+            self.state = "dead"
+
+    # ── State helpers ─────────────────────────────────────────────────────────
     @property
-    def idle(self):
+    def idle(self) -> bool:
         return self.state == "idle"
 
-    
     @property
-    def running(self):
+    def running(self) -> bool:
         return self.state == "running"
-    
+
     @property
-    def jumping(self):
+    def jumping(self) -> bool:
         return self.state == "jumping"
-    
+
     @property
-    def sliding(self):
+    def sliding(self) -> bool:
         return self.state == "sliding"
+
 
 class BulletState:
     def __init__(self, moving=False, colliding=False, inactive=True):
@@ -40,45 +44,49 @@ class BulletState:
         self.colliding = colliding
         self.inactive = inactive
 
+
 class EnemyState:
     def __init__(self):
         self.state = "shambling"
         self.damageTimer = Timer(0.5)
-        self.hitPoints = 100
-        
-    # Helper properties 
+        # Matches the per-spawn value used in generateLevelChunk
+        self.hitPoints: int = 30
+
+    # ── State helpers ─────────────────────────────────────────────────────────
     @property
-    def shambling(self):
+    def shambling(self) -> bool:
         return self.state == "shambling"
-    
+
     @shambling.setter
-    def shambling(self, value):
+    def shambling(self, value: bool) -> None:
         if value:
             self.state = "shambling"
-    
+
     @property
-    def damage(self):
+    def damage(self) -> bool:
         return self.state == "damage"
-    
+
     @damage.setter
-    def damage(self, value):
+    def damage(self, value: bool) -> None:
         if value:
             self.state = "damage"
-    
+
     @property
-    def dead(self):
+    def dead(self) -> bool:
         return self.state == "dead"
-    
+
     @dead.setter
-    def dead(self, value):
+    def dead(self, value: bool) -> None:
         if value:
             self.state = "dead"
 
+
 class ObjectData:
-    def __init__(self, player=None, bullet=None,enemy=None):
+    def __init__(self, player=None, bullet=None, enemy=None):
         self.player = player or PlayerState()
         self.bullet = bullet or BulletState()
-        self.enemy=enemy or EnemyState()
+        self.enemy = enemy or EnemyState()
+
 
 class ObjectType:
     def __init__(self, player=False, level=False, enemy=False, bullet=False):
@@ -86,6 +94,7 @@ class ObjectType:
         self.level = level
         self.enemy = enemy
         self.bullet = bullet
+
 
 class GameObject:
     def __init__(self):
@@ -102,6 +111,6 @@ class GameObject:
         self.dynamic = False
         self.grounded = False
         self.collider = sdl3.SDL_FRect(x=0, y=0, w=0, h=0)
-        self.flashTimer=Timer(0.05)
-        self.shouldFlash=False
-        self.spriteframe=1
+        self.flashTimer = Timer(0.05)
+        self.shouldFlash = False
+        self.spriteframe = 1

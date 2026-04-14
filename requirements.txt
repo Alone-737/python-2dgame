@@ -1,0 +1,14 @@
+# python-2dgame dependencies
+# Install with: pip install -r requirements.txt
+
+# SDL3 bindings (includes SDL3.SDL_image sub-package)
+sdl3
+
+# SDL2_mixer bindings (used for audio)
+PySDL2
+
+# GLM (OpenGL Mathematics) – vec2, mat4, etc.
+PyGLM
+
+# Numerical arrays used in level generation
+numpy
